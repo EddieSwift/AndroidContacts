@@ -1,5 +1,7 @@
 package com.eddie.contacts;
 
+import android.content.DialogInterface;
+import android.os.AsyncTask;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -8,6 +10,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 public class InfoActivity extends AppCompatActivity {
@@ -19,7 +22,7 @@ public class InfoActivity extends AppCompatActivity {
 
     private ViewGroup editWrapper, textWrapper;
     private TextView nameTxt, emailTxt, phoneTxt, addressTxt, descTxt;
-    private EditText inputName, inputEmail, inputPhone, inputAddress,inputDesc;
+    private EditText inputName, inputEmail, inputPhone, inputAddress, inputDesc;
 
     private MenuItem doneItem, deleteItem, editItem;
 
@@ -28,17 +31,25 @@ public class InfoActivity extends AppCompatActivity {
 
     private StoreProvider provider;
 
+    private ProgressBar infoProgressBar;
+
+    private MyThread myThread;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         provider = StoreProvider.getInstance();
         super.onCreate(savedInstanceState);
-        mode = getIntent().getIntExtra("MODE",EDIT_MODE);
-        pos = getIntent().getIntExtra("POS",-1);
-        if(pos >= 0){
+        mode = getIntent().getIntExtra("MODE", EDIT_MODE);
+        pos = getIntent().getIntExtra("POS", -1);
+
+        if (pos >= 0) {
+
             curr = provider.get(pos);
-        }else{
-            curr = new Contact("","","","","");
+        } else {
+            curr = new Contact("", "", "", "", "");
         }
+
         setContentView(R.layout.activity_info);
         editWrapper = findViewById(R.id.editWrapper);
         textWrapper = findViewById(R.id.textWrapper);
@@ -52,18 +63,21 @@ public class InfoActivity extends AppCompatActivity {
         inputPhone = findViewById(R.id.inputPhone);
         inputAddress = findViewById(R.id.inputAddress);
         inputDesc = findViewById(R.id.inputDesc);
+
+        infoProgressBar = findViewById(R.id.infoProgressBar);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_info,menu);
+
+        getMenuInflater().inflate(R.menu.menu_info, menu);
         doneItem = menu.findItem(R.id.done_item);
         editItem = menu.findItem(R.id.edit_item);
         deleteItem = menu.findItem(R.id.delete_item);
-        if (mode == EDIT_MODE){
+        if (mode == EDIT_MODE) {
             getCurrentData();
             showEditMode();
-        }else{
+        } else {
             setCurrentData();
             showViewMode();
         }
@@ -72,38 +86,114 @@ public class InfoActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if(item.getItemId() == R.id.done_item){
-            if(getCurrentData()) {
-                saveCurrent();
-                finish();
+
+        if (item.getItemId() == R.id.done_item) {
+
+            if (getCurrentData()) {
+
+                myThread = new MyThread();
+                myThread.execute(3000);
             }
-        }else if(item.getItemId() == R.id.edit_item){
+
+        } else if (item.getItemId() == R.id.edit_item) {
+
             setCurrentData();
             showEditMode();
             mode = EDIT_MODE;
-        }else if(item.getItemId() == R.id.delete_item){
-            deleteCurrent();
-            finish();
+
+        } else if (item.getItemId() == R.id.delete_item) {
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Deleting contact")
+                    .setMessage("Are you sure you want to delete this contact?")
+                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                            deleteCurrent();
+                            finish();
+                        }
+                    })
+                    .setNegativeButton("No", null)
+                    .setCancelable(false)
+                    .create()
+                    .show();
         }
+
         return super.onOptionsItemSelected(item);
     }
 
+    class MyThread extends AsyncTask<Integer, Integer, Integer> {
+
+
+        @Override
+        protected void onPreExecute() {
+
+            infoProgressBar.setVisibility(View.VISIBLE);
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+
+
+        }
+
+        @Override
+        protected Integer doInBackground(Integer... integers) {
+
+            int sleepTime = integers[0];
+
+            try {
+                Thread.sleep(sleepTime);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Integer integer) {
+
+            saveCurrent();
+            finish();
+            infoProgressBar.setVisibility(View.INVISIBLE);
+        }
+
+        @Override
+        protected void onCancelled() {
+
+            saveCurrent();
+            finish();
+            infoProgressBar.setVisibility(View.INVISIBLE);
+        }
+    }
+
     private void deleteCurrent() {
-        if(pos>=0){
+
+        if (pos >= 0) {
+
             provider.remove(pos);
         }
+
         finish();
     }
 
     private void saveCurrent() {
-        if(pos>=0){
-            provider.update(pos,curr);
-        }else{
+
+        if (pos >= 0) {
+
+            provider.update(pos, curr);
+
+        } else {
+
             provider.add(curr);
         }
     }
 
-    private void showEditMode(){
+    private void showEditMode() {
+
         editWrapper.setVisibility(View.VISIBLE);
         textWrapper.setVisibility(View.GONE);
         deleteItem.setVisible(true);
@@ -111,7 +201,8 @@ public class InfoActivity extends AppCompatActivity {
         editItem.setVisible(false);
     }
 
-    private void showViewMode(){
+    private void showViewMode() {
+
         editWrapper.setVisibility(View.GONE);
         textWrapper.setVisibility(View.VISIBLE);
         deleteItem.setVisible(false);
@@ -119,7 +210,8 @@ public class InfoActivity extends AppCompatActivity {
         editItem.setVisible(true);
     }
 
-    private void setCurrentData(){
+    private void setCurrentData() {
+
         nameTxt.setText(curr.getName());
         emailTxt.setText(curr.getEmail());
         phoneTxt.setText(curr.getPhone());
@@ -132,30 +224,37 @@ public class InfoActivity extends AppCompatActivity {
         inputDesc.setText(curr.getDescription());
     }
 
-    private boolean getCurrentData(){
+    private boolean getCurrentData() {
+
         boolean res = false;
+
         String name = inputName.getText().toString();
         String email = inputEmail.getText().toString();
         String phone = inputPhone.getText().toString();
         String address = inputAddress.getText().toString();
         String desc = inputDesc.getText().toString();
-        Contact tmp = new Contact(name,email,phone,address,desc);
-        if(!valid(tmp)){
+        Contact tmp = new Contact(name, email, phone, address, desc);
+
+        if (!valid(tmp)) {
+
             new AlertDialog.Builder(this)
-                    .setTitle("Invalidate data!")
-                    .setMessage("All fields need be fill!")
-                    .setPositiveButton("Ok",null)
+                    .setTitle("Input contact information")
+                    .setMessage("All fields must be filled!")
+                    .setPositiveButton("Ok", null)
                     .setCancelable(false)
                     .create()
                     .show();
-        }else{
+        } else {
+
             curr = tmp;
             res = true;
         }
-        return  res;
+
+        return res;
     }
 
     private boolean valid(Contact tmp) {
+
         return !tmp.getName().trim().isEmpty()
                 && !tmp.getEmail().trim().isEmpty()
                 && !tmp.getPhone().trim().isEmpty()
